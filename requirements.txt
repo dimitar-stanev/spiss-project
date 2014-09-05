@@ -1,0 +1,4 @@
+bottle
+Mako
+pymongo
+selenium

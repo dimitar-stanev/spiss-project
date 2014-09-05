@@ -1,0 +1,230 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<meta name="keywords" content="" />
+	<meta name="description" content="" />
+	<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+	<script src="js/jquery.min.js"></script>
+	<link href="css/default.css" rel="stylesheet" type="text/css" media="all" />
+	<link href="css/font-awesome.min.css" rel="stylesheet" type="text/css" media="all" />
+	<style>
+	.navigationBtn {
+		width:25px;
+		height:25px;
+	}
+	#navigationControls td {
+		border:none;
+	}
+	#mainTable{
+		width: 1206px;
+		border:1px solid black;
+	}
+	#controllerContainer {
+		border:1px solid black;
+		padding:auto;
+		margin:auto;
+		text-align: center;
+	}
+	#headingRow{
+		background: silver;
+	}
+	#moveUp {
+		border-top-right-radius: 50px;
+		border-top-left-radius: 50px;
+	}
+	#moveDown {
+		border-bottom-right-radius: 50px;
+		border-bottom-left-radius: 50px;
+	}
+	#moveLeft {
+		border-bottom-left-radius: 50px;
+		border-top-left-radius: 50px;
+	}
+	#moveRight {
+		border-bottom-right-radius: 50px;
+		border-top-right-radius: 50px;
+	}
+	</style>
+	<script>
+	var currentZoom = 9;
+	var currentLatitude = 42.6977082;
+	var currentLongitude = 23.3218675;
+	var geocodedLng;
+	var geocodedLat;
+	var currentHeading = 0;
+	function performQuery() {
+		var latitude = $("#coordinatesLatitude").val();
+		var longitude = $("#coordinatesLongitude").val();
+		latitude = encodeURI(latitude);
+		longitude = encodeURI(longitude);
+		currentLongitude = longitude;
+		currentLatitude = latitude;
+		currentZoom = 9;
+		var urlString = "http://api.geonames.org/timezoneJSON?lat="+latitude+"&lng="+longitude+"&username=distanev";
+		var urlString = encodeURI(urlString);
+		$.ajax({
+			url:urlString
+		}).done(function(data) {
+			$("#timeNow").html(data.time);
+			$("#timeZone").html(data.timezoneId);
+			$("#country").html(data.countryName);
+			$("#resultsTable").attr("style","display:block")
+			$("#foundLat").html(latitude);
+			$("#foundLong").html(longitude);
+		});
+		drawMap();
+	}
+	function drawMap() {
+		googleImageURL = "http://maps.googleapis.com/maps/api/staticmap?center=" + currentLatitude + "," + currentLongitude + "&zoom=" + currentZoom + "&size=720x720";
+		$("#googleMapsImage").attr("src", googleImageURL);
+	}
+	function zoomIn(){ 
+		currentZoom += 1;
+		drawMap();
+	}
+	function zoomOut(){ 
+		currentZoom -= 1;
+		drawMap();
+	}
+	function moveMapRight(){
+		currentLongitude -= 1;
+		drawMap();
+	}
+	function moveMapLeft(){
+		currentLongitude += 1;
+		drawMap();
+	}
+	function moveMapUp() {
+		currentLatitude += 1;
+		drawMap();
+	}
+	function moveMapDown() {
+		currentLatitude -= 1;
+		drawMap();
+	}
+	function geocode() {
+		var search = $("#searchField").val();
+		search = encodeURI(search);
+		var urlString = "http://maps.googleapis.com/maps/api/geocode/json?address=" + search;
+		$.ajax({
+			dataType: "json",
+			url:urlString
+		}).done(function(data) {
+				// alert(data.results[0].geometry.location.lat);
+				$("#resultsTable").attr("style","display:block")
+				$("#foundLat").html(data.results[0].geometry.location.lat);
+				$("#foundLong").html(data.results[0].geometry.location.lng);
+				geocodedLng = data.results[0].geometry.location.lng;
+				geocodedLat = data.results[0].geometry.location.lat;
+				getWeather(geocodedLat, geocodedLng);
+				streetView(geocodedLat, geocodedLng);
+				var urlString = "http://api.geonames.org/timezoneJSON?lat="+geocodedLat+"&lng="+geocodedLng+"&username=distanev";
+				var urlString = encodeURI(urlString);
+				goToGeocoded();
+				$.ajax({
+					url:urlString
+				}).done(function(data) {
+					$("#timeNow").html(data.time);
+					$("#timeZone").html(data.timezoneId);
+					$("#country").html(data.countryName);
+					$("#resultsTable").attr("style","display:block")
+					$("#foundLat").html(latitude);
+					$("#foundLong").html(longitude);
+				});
+			});
+	}
+	function goToGeocoded() {
+		currentLongitude = geocodedLng;
+		currentLatitude = geocodedLat;
+		drawMap();
+	}
+	function getWeather(lat, lng) {
+		var urlString = "http://api.openweathermap.org/data/2.5/weather?lat="+lat+"&lon="+lng+"&mode=html";
+		$.ajax({
+			url:urlString
+		}).done(function(data) {
+			$("#weather").attr("style", "display:block");
+			$("#weather").html(data);
+			$("#weather").attr("style", "height:240px");
+		});
+	}
+	function streetView(lat, lng) {
+		var streetViewURL = "http://maps.googleapis.com/maps/api/streetview?size=480x480&location="+lat+","+lng+"&heading=" + currentHeading;
+		$("#streetViewImage").attr("src", streetViewURL);
+	}
+	function rotateLeft() {
+		currentHeading -= 10;
+		streetView(currentLatitude, currentLongitude);
+	}
+	function rotateRight() {
+		currentHeading += 10;
+		streetView(currentLatitude, currentLongitude);
+	}
+	</script>
+</head>
+<body>
+
+
+	<table id="mainTable">
+		<tr id="headingRow"> <td colspan="5" id="controllerContainer" style="text-align:left"> [X] CONTROL PANEL <span style="float:right"><a href="/logout">Logout</a></span></td> </tr>
+		<tr>
+			<td style="width:450px; text-align:right" id="controllerContainer">
+				COORDINATES
+				<input type="text" id="coordinatesLatitude" style="width:80px"\>
+				<input type="text" id="coordinatesLongitude" style="width:80px"\>
+				<input type="button" id="submitButton" value="Submit" style="width:70px" onclick="performQuery()"\>
+				<input type="text" id="searchField" style="width:260px"\>
+				<input type="button" id="geocodeAddressButton" value="Search..." style="width:70px" onclick="geocode()"\>
+			</td>
+			<td style="width:262px" id="controllerContainer">
+				<table id="resultsTable" style="display:none">
+					<tr>
+						<td id="controllerContainer"><div id="foundLat"> </div></td>
+						<td id="controllerContainer"><div id="foundLong"> </div></td>
+					</tr>
+					<tr>
+						<td id="controllerContainer">Time</td><td id="controllerContainer" style="width:100%"><div id="timeNow"> </div></td>
+					</tr>
+					<tr>
+						<td id="controllerContainer">Timezone</td><td id="controllerContainer" style="width:100%"><div id="timeZone"> </div></td>
+					</tr>
+					<tr>
+						<td id="controllerContainer">Country</td><td id="controllerContainer" style="width:100%"><div id="country"> </div></td>
+					</tr>
+				</table>
+			</td>
+			<td style="width:92px" id="controllerContainer">
+				<table id="navigationControls">
+					<tr><td></td><td><input type="button" class="navigationBtn" id="moveUp" value="" onclick="moveMapUp()"></td><td></td></tr>
+					<tr><td><input type="button" id="moveLeft" class="navigationBtn" value="" onclick="moveMapRight()"></td><td>
+						<input type="button" style="width:26px; height:26px; 
+						border-top-left-radius: 50px;
+						border-top-right-radius: 50px;
+						border-bottom-left-radius: 50px;
+						border-bottom-right-radius: 50px;">
+					</td><td><input type="button" id="moveRight" class="navigationBtn" value="" onclick="moveMapLeft()"></td></tr>
+					<tr><td></td><td><input type="button" id="moveDown" class="navigationBtn" value="" onclick="moveMapDown()"></td><td></td></tr>
+				</table>
+			</td>
+			<td style="width:55px" id="controllerContainer">
+				<input type="button" class="navigationBtn" id="zoomInButton" value="+" onclick="zoomIn()">
+				<input type="button" id="zoomOutButton" class="navigationBtn" value="-" onclick="zoomOut()">
+			</td>
+			<td id="controllerContainer">
+				<input type="button" id="rotateLeftBtn" value="Rotate Left" onclick="rotateLeft()">
+				<input type="button" id="rotateRightBtn" value="Rotate Right" onclick="rotateRight()">
+			</td>
+		</tr>
+	</table>
+	<table>
+		<tr>
+			<td rowspan="2"><img src="http://maps.googleapis.com/maps/api/staticmap?center=42.6977082,23.3218675&zoom=11&size=720x720" id="googleMapsImage" width="720" height="720"></td>
+			<td><img src="http://maps.googleapis.com/maps/api/streetview?size=480x480&location=42.6977082,23.3218675" id="streetViewImage"></td>
+		</tr>
+		<tr>
+			<td><div id="weather" style="width:240px;height:240px"></div></td>
+		</tr>
+	</table>
+
+</body>
+</html>
